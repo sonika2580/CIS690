@@ -1,0 +1,58 @@
+---
+title: "GroupProjectV1"
+author: "Sonika Shrestha"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+#Load the dataset
+```{r}
+data <-read.csv("patients.csv")
+
+```
+
+
+```{r}
+head(data)
+
+```
+
+```{r}
+dim(data)
+
+```
+
+```{r}
+summary(data)
+```
+sd_values <- apply(data,2,sd)
+
+print(sd_values)
+
+## Histogram for Insulin to check the difference between the third quartiles and the maximum value.
+
+
+
+
+##Missing values
+missing_val <- sapply(data[, 1:8], function(x) sum(is.na(x)))
+missing_val
+
+#Replacing with NA
+data[data == 0] <- NA
+
+filtered_data <- data[rowSums(data ==0)>2,]
+filtered_data
+
+## References
+- Calculate the mean, median, standard deviation, and quartiles for
+each independent variable
+
+
+
+
