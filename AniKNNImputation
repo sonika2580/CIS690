@@ -1,0 +1,79 @@
+install.packages("VIM")
+library(VIM)
+require(ggplot2)
+
+setwd("C:/Users/rohan/Desktop/New folder")
+#primary dataset
+patientdata <- read.csv("patients.csv")
+print(patientdata)
+
+#back dataset
+patientdata1 <- read.csv("patients.csv")
+print(patientdata1)
+
+head(patientdata, 25)
+summary(patientdata)
+
+#Boxplot
+ggplot(patientdata, aes(x = "", y = SkinThickness)) +
+  geom_boxplot() +
+  labs(x = "", y = "SkinThickness") +
+  theme_minimal()
+
+ggplot(patientdata, aes(x = "", y = Glucose)) +
+  geom_boxplot() +
+  labs(x = "", y = "SkinThickness") +
+  theme_minimal()
+
+ggplot(patientdata, aes(x = "", y = BloodPressure)) +
+  geom_boxplot() +
+  labs(x = "", y = "SkinThickness") +
+  theme_minimal()
+
+#density Plot
+ggplot(data = patientdata1, aes(x = SkinThickness, color = Diagnosis, fill = Diagnosis)) +
+  geom_density(alpha = 0.8) +
+  labs(x = "Skin Thickness", y = "Density", fill = "Diagnosis") +
+  theme_minimal()
+
+
+####### Handling the consecutive zeros in the rows.
+# Assuming your dataframe is called 'data'
+#  a vector of the variables
+variables <- c("Glucose", "BloodPressure", "SkinThickness", "Insulin", "BMI", "Pedigree")
+# Filter the rows based on the conditions
+filtered_data <- patientdata[rowSums(patientdata[variables] == 0) > 2, ]
+# View the resulting dataframe
+filtered_data
+#following block of code deletes the rows which has more than 2 zeros in it.#
+patientdata <- patientdata[rowSums(patientdata[variables] == 0) <= 2, ]
+
+
+#Counts of zeros in each column
+zero_counts <- colSums(patientdata == 0)
+print(zero_counts)
+
+#replacing the zeros with NA
+
+# Specify the columns to exclude (1, 8, 9)
+columns_to_exclude <- c(1, 8, 9)
+
+# Replace zeros with NA in the remaining columns
+patientdata[, -columns_to_exclude][patientdata[, -columns_to_exclude] == 0] <- NA
+
+# View the updated dataset
+patientdata
+
+
+#imputing the zeros with KNN
+# Specify the columns to impute (excluding columns pregnancy, Age, and Diagnosis)
+columns_to_impute <- setdiff(seq_along(patientdata), c(1, 8, 9))
+
+# Perform kNN imputation on the selected columns
+patientdata[, columns_to_impute] <- kNN(patientdata[, columns_to_impute], k = 5)
+
+# View the updated dataset
+patientdata
+
+
+
