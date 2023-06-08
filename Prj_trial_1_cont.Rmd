@@ -1,0 +1,959 @@
+---
+title: "Prj_trail_1_cont"
+author: "Shourav Dey"
+date: "2023-06-03"
+output: html_document
+---
+
+```{r}
+getwd()
+```
+
+
+Importing the data
+
+```{r}
+data <-  read.csv("patients.csv", header=TRUE, sep = ",",)
+data
+```
+
+```{r}
+View(data)
+```
+
+```{r}
+summary(data)
+```
+
+
+# Count the number of "0" values in each column
+```{r}
+zero_counts <- colSums(data == 0, na.rm = TRUE)
+
+zero_counts
+```
+
+#--------------------------BMI-------------------------#
+
+ Underweight: BMI below 18.5
+ Normal weight: BMI between 18.5 and 24.9
+ Overweight: BMI between 25 and 29.9
+ Obesity: BMI 30 or higher
+#-----------------------------------------------------------
+
+#---------***** Before Imputation********--------------
+
+```{r}
+library(dplyr)
+
+data_summary_BMI <- data %>%
+  summarize(mean_value = mean(BMI),
+            sd_value = sd(BMI),
+            iqr_value = IQR(BMI),
+            median_value = median(BMI))
+
+data_summary_BMI
+
+```
+
+# Findings
+
+mean_value        sd_value     iqr_value
+31.99258           7.88416      9.3
+median BMI 32
+
+
+# 11 missing values
+
+```{r}
+fat_count <- colSums(data >= 32, na.rm = TRUE)
+
+fat_count
+
+```
+
+# Need to do fat count again to see how many values we have over the mean
+
+
+
+
+```{r}
+library(ggplot2)
+
+```
+##### HISTOGRAM before imputation
+
+# Better visualization
+
+
+```{r}
+hist_bmi <- ggplot(data) +
+  geom_histogram(aes(x = BMI, y = ..density..), fill = "orange", color = "black", binwidth = 0.2) +
+  geom_density(aes(x = BMI, color = "KDE"), bw = 0.1) +
+  theme(panel.background = element_rect(fill = "gray90"))
+
+hist_bmi
+
+```
+There are some good amount of outliers present
+ There are 11 counts of 0 values present which is not possible
+ Both the mean and the median value suggests the dataset is filled with Obese people
+ The data with BMI more than 45 are outliers or extreme cases, shouldn't be ignored
+ THe shape however is bell shaped
+
+
+
+# Boxplot before Imputation
+
+```{r}
+box_bmi_trial <- ggplot(data, aes(x=BMI))+geom_boxplot()
+
+box_bmi_trial
+
+```
+ The box plot varifies that data with BMI > 45 are outliers
+ the data with 0 are outliers
+ But I don't think we should ignore
+
+
+# --BloodPressure
+
+```{r}
+data_summary_bp <- data %>%
+  summarize(mean_value = mean(BloodPressure),
+            sd_value = sd(BloodPressure),
+            iqr_value = IQR(BloodPressure),
+            median_value = median(BloodPressure))
+
+data_summary_bp
+
+```
+ mean_value    sd_value    iqr_value       median_value
+ 69.10547      19.35581     18                   72
+
+# According to AHA
+# Normal blood pressure:  Diastolic <80 mm Hg
+# Elevated blood pressure: Diastolic <80 mm Hg
+# Hypertension Stage 1:  Diastolic 80-89 mm Hg
+# Hypertension Stage 2: Diastolic ≥90 mm Hg
+
+Median value lies on the Elevated blood pressure
+Mean suggest normal bp
+
+# 35 missing values
+
+
+#----------Histogram of original BP data-------------
+
+
+```{r}
+bp_hist_trial <- ggplot(data)+ geom_histogram(aes(x=BloodPressure, y = ..density..), fill = "orange", color ="black", binwidth =0.2)+
+                  geom_density(aes(x=BloodPressure, color ="KDE"), bw=0.1)+
+                  theme(panel.background = element_rect(fill ="gray90"))
+
+bp_hist_trial
+
+```
+# Heavy density of 0 outliers
+# However, the bell shape is pretty obvious representing normal distribution in the dataset
+# Presence of some minor outliers on both extremes but nothing extreme
+
+
+
+#----------Boxplot for BP w/o imputation--------------
+
+```{r}
+bp_box_trial <- ggplot(data, aes(x=BloodPressure))+geom_boxplot()
+
+bp_box_trial
+
+```
+
+
+
+
+#------------------------ Rough trial (most likely useles)------------#
+
+#--- Checking correlation between BMI and BP
+
+
+library(ggplot2)
+
+```{r}
+bmi_bp_scatter <- ggplot(data, aes(x = BMI, y = BloodPressure)) +
+  geom_point()
+
+bmi_bp_scatter
+
+```
+
+```{r}
+corr_bmi_bp <- cor(data$BMI, data$BloodPressure)
+
+corr_bmi_bp
+
+```
+
+
+
+#------------------------------------------------------------------------#
+
+
+#--------------Corr BMI vs Diagnosis---------
+
+#Bar plot
+
+```{r}
+ggplot(data, aes(x=Diagnosis, y=BMI)) +
+  geom_bar(stat = "summary", fun="mean")
+
+```
+#Violin plot-----------Useless
+
+```{r}
+ggplot(data, aes(x = Diagnosis, y = BMI)) +
+  geom_violin()
+```
+
+#Box plot--------Useless
+
+ggplot(data, aes(x = Diagnosis, y = BMI)) +
+  geom_boxplot()
+
+#Scatter plot------ Seems like a vague relationship
+
+ggplot(data, aes(x=BMI, y=as.numeric(Diagnosis)))+
+  geom_point()
+
+
+#correlation
+
+corr_bmi_diag <- cor(data$BMI, data$Diagnosis)
+
+corr_bmi_diag
+# 
+# corr_bmi_diag
+#  0.2926947
+
+
+# From Jass
+
+ Insulin
+ Normal 80-120
+ Mean 127.8
+ insulin and glucose are related
+ if you are 10 points above 120
+
+
+
+```{r}
+
+max_zeros <- max(rowSums(data == 0))
+rows_with_max_zeros <- which(rowSums(data == 0) == max_zeros)
+
+# Print the rows with maximum zeros
+print(data[rows_with_max_zeros, ])
+
+```
+
+# New data frame with diagnosis 0 & 1
+
+
+```{r}
+# Creating a dataframe with diagnosis = 0
+data_diag_0 <- data[data$Diagnosis == 0, ]
+
+# Creating a dataframe with diagnosis = 1
+data_diag_1 <- data[data$Diagnosis == 1, ]
+
+```
+
+500 Not diagnosed
+268 Diagnosed
+
+```{r}
+
+head(data_diag_0)
+
+```
+
+
+
+
+```{r}
+
+
+# Assuming your dataframe is called 'data'
+# Create a vector of the mentioned variables
+variables <- c("Glucose", "BloodPressure", "SkinThickness", "Insulin", "BMI", "Pedigree")
+
+# Filter the rows based on the conditions
+filtered_data <- data[rowSums(data[variables] == 0) > 2, ]
+
+# View the resulting dataframe
+filtered_data
+
+
+```
+
+
+
+
+```{r}
+
+View(filtered_data)
+
+
+```
+
+
+
+#------------------Histogram and counts of Features before Imputation----------------#
+
+
+
+#-----------Glucose------------------
+
+# Histogram of entire glucose
+```{r}
+data %>%
+  ggplot(aes(x = Glucose)) +
+  geom_histogram(fill = "Orange", color = "black") +
+  theme_minimal() +
+  labs(x = "Glucose Level ",
+       y = "Number of Women")+ggtitle("Variation of glucose in women")
+
+
+```
+# THe Hisotgram seems skewed to the left. There are presence of 
+
+
+#Density and Box plot of Not Diagnosed
+
+
+```{r}
+
+
+library(gridExtra)
+
+p2 <- ggplot(data_diag_0, aes(x = Glucose)) +
+  geom_density(alpha = 0.8, fill = "Orange", color = "black") +
+  theme(legend.position = "bottom") +
+  labs(x = "Glucose", y = "Density", title = "Density plot of glucose")
+
+p1 <- ggplot(data_diag_0, aes(x = Diagnosis, y = Glucose)) +
+  geom_boxplot() +
+  theme(legend.position = "bottom") +
+  ggtitle("Variation of glucose in women")
+
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+
+```
+
+# Boxplot and Density plot of Diagnosed
+
+```{r}
+
+library(gridExtra)
+
+p2 <- ggplot(data_diag_1, aes(x = Glucose)) +
+  geom_density(alpha = 0.8, fill = "Orange", color = "black") +
+  theme(legend.position = "bottom") +
+  labs(x = "Glucose", y = "Density", title = "Density plot of glucose")
+
+p1 <- ggplot(data_diag_1, aes(x = Diagnosis, y = Glucose)) +
+  geom_boxplot() +
+  theme(legend.position = "bottom") +
+  ggtitle("Variation of glucose in women")
+
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+
+```
+```{r}
+summary(data)
+```
+
+```{r}
+summary(data_diag_0)
+```
+
+```{r}
+summary(data_diag_1)
+
+```
+
+
+
+#----------------------SkinThickness-------------------------
+
+
+```{r}
+
+data %>%
+  ggplot(aes(x = SkinThickness)) +
+  geom_histogram(fill = "Orange", color = "black") +
+  theme_minimal() +
+  labs(x = "SkinThickness ",
+       y = "Number of Women")+ggtitle("Variation in Skinthickness in women")
+
+
+```
+# Normally distributed, but heavy presence of outliers
+
+
+------------No Diabetes
+
+
+```{r}
+library(gridExtra)
+
+p2 <- ggplot(data_diag_0, aes(x = SkinThickness)) +
+  geom_density(alpha = 0.8, fill = "Orange", color = "black") +
+  theme(legend.position = "bottom") +
+  labs(x = "SkinThickness", y = "Density", title = "SkinThickness  NO Diabetes")
+
+p1 <- ggplot(data_diag_0, aes(x = Diagnosis, y = SkinThickness)) +
+  geom_boxplot() +
+  theme(legend.position = "bottom") +
+  ggtitle("Skinthickness No Diabetes")
+
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+
+```
+
+-------------------DIABETES
+
+```{r}
+
+library(gridExtra)
+
+p2 <- ggplot(data_diag_1, aes(x = SkinThickness)) +
+  geom_density(alpha = 0.8, fill = "Orange", color = "black") +
+  theme(legend.position = "bottom") +
+  labs(x = "SkinThickness", y = "Density", title = "Diabetes vs SkinThickness")
+
+p1 <- ggplot(data_diag_1, aes(x = Diagnosis, y = SkinThickness)) +
+  geom_boxplot() +
+  theme(legend.position = "bottom") +
+  ggtitle("Diabetes vs SkinThickness")
+
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+
+```
+
+
+
+#---------------------BMI___________________
+
+
+
+```{r}
+data %>%
+  ggplot(aes(x = BMI)) +
+  geom_histogram(fill = "Orange", color = "black") +
+  theme_minimal() +
+  labs(x = "BMI ",
+       y = "Number of Women")+ggtitle("Variation of BMI in data")
+
+```
+skewed to the right
+
+---------------- Diabetes
+
+
+```{r}
+library(gridExtra)
+
+p2 <- ggplot(data_diag_1, aes(x = BMI)) +
+  geom_density(alpha = 0.8, fill = "Orange", color = "black") +
+  theme(legend.position = "bottom") +
+  labs(x = "BMI", y = "Density", title = "BMI vs Diabetes")
+
+p1 <- ggplot(data_diag_1, aes(x = Diagnosis, y = BMI)) +
+  geom_boxplot() +
+  theme(legend.position = "bottom") +
+  ggtitle("BMI Diabetes")
+
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+```
+
+
+
+
+
+
+---------BMI vs No Diabetes
+
+```{r}
+
+library(gridExtra)
+
+p2 <- ggplot(data_diag_0, aes(x = BMI)) +
+  geom_density(alpha = 0.8, fill = "Orange", color = "black") +
+  theme(legend.position = "bottom") +
+  labs(x = "BMI", y = "Density", title = "Density plot BMI without Diabetes")
+
+p1 <- ggplot(data_diag_0, aes(x = Diagnosis, y = BMI)) +
+  geom_boxplot() +
+  theme(legend.position = "bottom") +
+  ggtitle("BMI without Diabetes")
+
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+
+
+```
+
+
+
+```{r}
+patientdata = read.csv("patients.csv", header=TRUE, sep = ",",)
+
+```
+
+
+# ---------------------BloodPressure---------------
+
+```{r}
+data %>%
+  ggplot(aes(x = BloodPressure)) +
+  geom_histogram(fill = "Orange", color = "black") +
+  theme_minimal() +
+  labs(x = "Blood Pressure ",
+       y = "Number of Women") +
+ggtitle("Blood Pressure in entire dataset")
+
+
+```
+
+# Normally distribute with slight skewness
+# Normality (line) test will be a good test
+# Q-q density plot
+
+-------------------------------------Diabetes and BP----------------
+```{r}
+library(gridExtra)
+
+p2 <- ggplot(data_diag_1, aes(x = BloodPressure)) +
+  geom_density(alpha = 0.8, fill = "Orange", color = "black") +
+  theme(legend.position = "bottom") +
+  labs(x = "BMI", y = "Density", title = "BP vs Diabetes")
+
+p1 <- ggplot(data_diag_1, aes(x = Diagnosis, y = BloodPressure)) +
+  geom_boxplot() +
+  theme(legend.position = "bottom") +
+  ggtitle("Blood Pressure Diabetes")
+
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+
+```
+
+
+----------------BP No Diabetes-----------------------------
+
+```{r}
+
+library(gridExtra)
+
+p2 <- ggplot(data_diag_0, aes(x = BloodPressure)) +
+  geom_density(alpha = 0.8, fill = "Orange", color = "black") +
+  theme(legend.position = "bottom") +
+  labs(x = "Bloodpressure", y = "Density", title = "BP NO Diabetes")
+
+p1 <- ggplot(data_diag_0, aes(x = Diagnosis, y = BloodPressure)) +
+  geom_boxplot() +
+  theme(legend.position = "bottom") +
+  ggtitle("Blood Pressure No Diabetes")
+
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+
+```
+
+
+# ------------------------Insulin---------------------
+
+```{r}
+
+data %>%
+  ggplot(aes(x = Insulin)) +
+  geom_histogram(fill = "Orange", color = "black") +
+  theme_minimal() +
+  labs(x = "Insulin ",
+       y = "Number of Women") + ggtitle("Insulin in entire dataset")
+
+```
+# Completely obselete dataset, Need Severe care.
+# Heavy on the outliers
+# WHatever distribution is remaining is right skewed.
+# Seems presence of outliers on the extreme ends
+
+--------------------------- Insulin vs Diabetes
+
+```{r}
+
+p2 <- ggplot(data_diag_1, aes(x = Insulin)) +
+  geom_density(alpha = 0.8, fill = "Orange", color = "black") +
+  theme(legend.position = "bottom") +
+  labs(x = "Insulin", y = "Density", title = "Insulin vs Diabetes")
+
+p1 <- ggplot(data_diag_1, aes(x = Diagnosis, y = Insulin)) +
+  geom_boxplot() +
+  theme(legend.position = "bottom") +
+  ggtitle("Insulin & Diabetes")
+
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+
+
+
+```
+# Unsettling distribution and presence of outliers on the extreme ends are visible
+
+
+```{r}
+
+
+p2 <- ggplot(data_diag_0, aes(x = Insulin)) +
+  geom_density(alpha = 0.8, fill = "Orange", color = "black") +
+  theme(legend.position = "bottom") +
+  labs(x = "Insulin", y = "Density", title = "Insulin NO Diabetes")
+
+p1 <- ggplot(data_diag_0, aes(x = Diagnosis, y = Insulin)) +
+  geom_boxplot() +
+  theme(legend.position = "bottom") +
+  ggtitle("Insulin level NO diabetes")
+
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+
+
+
+```
+# Same .. Needs extreme care
+
+
+-----------------------------------Pedigree-----------------------
+
+```{r}
+data %>%
+  ggplot(aes(x = Pedigree)) +
+  geom_histogram(fill = "Orange", color = "black") +
+  theme_minimal() +
+  labs(x = "Pedigree ",
+       y = "Number of Women") + ggtitle("Pedigree in entire dataset")
+
+```
+# Somewhat acceptable however presence of outliers in the extreme end.
+# Furthermore, the data is skewed to the right
+
+---------------------------------Pedigree & Diabetes
+
+```{r}
+
+p2 <- ggplot(data_diag_1, aes(x = Pedigree)) +
+  geom_density(alpha = 0.8, fill = "Orange", color = "black") +
+  theme(legend.position = "bottom") +
+  labs(x = "Pedigree", y = "Density", title = "Pedigree & Diabetes")
+
+p1 <- ggplot(data_diag_1, aes(x = Diagnosis, y = Pedigree)) +
+  geom_boxplot() +
+  theme(legend.position = "bottom") +
+  ggtitle("Pedigree & diabetes")
+
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+
+
+
+```
+
+
+
+---------------Pedigree NO Diabetes----------------------
+
+
+```{r}
+p2 <- ggplot(data_diag_0, aes(x = Pedigree)) +
+  geom_density(alpha = 0.8, fill = "Orange", color = "black") +
+  theme(legend.position = "bottom") +
+  labs(x = "Pedigree", y = "Density", title = "Pedigree NO Diabetes")
+
+p1 <- ggplot(data_diag_0, aes(x = Diagnosis, y = Pedigree)) +
+  geom_boxplot() +
+  theme(legend.position = "bottom") +
+  ggtitle("Pedigree NO diabetes")
+
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+
+
+```
+
+#Distribution is okay but heavily right skewed. Therefore presence of outliers in the extreme boundaries, evident from the box plot as well
+
+
+
+#---------------Pregnancies----------------
+
+```{r}
+data %>%
+  ggplot(aes(x = Pregnancies)) +
+  geom_histogram(fill = "Orange", color = "black") +
+  theme_minimal() +
+  labs(x = "Pregnancies ",
+       y = "Number of Women") + ggtitle("Pregnancies in entire dataset")
+
+
+```
+
+```{r}
+
+# Count the occurrences of each unique value in the 'Pregnancies' column
+pregnancies_counts <- table(data$Pregnancies)
+
+# Create a bar plot
+ggplot(data = data.frame(Pregnancies = names(pregnancies_counts),
+                         Count = as.vector(pregnancies_counts))) +
+  geom_bar(aes(x = Pregnancies, y = Count), stat = "identity") +
+  xlab("Pregnancies") +
+  ylab("Count") +
+  ggtitle("Count of Pregnancies")
+
+```
+
+```{r}
+# Create a box plot
+ggplot(data, aes(x = "", y = Pregnancies)) +
+  geom_boxplot() +
+  xlab("") +
+  ylab("Pregnancies") +
+  ggtitle("Box Plot of Pregnancies")
+
+```
+the dataset is such that it does not take the zeroes as outliers at all. Therefore other methods of imputation are required.
+
+```{r}
+
+ggplot(data, aes(x = Pregnancies)) +
+  geom_density(fill = "skyblue", alpha = 0.7) +
+  xlab("Pregnancies") +
+  ylab("Density") +
+  ggtitle("Density Plot of Pregnancies")
+
+```
+The column itself is heavily right skewed
+
+
+
+# ------------ Age--------------
+
+
+```{r}
+
+age_counts <- table(data$Age)
+
+# Create a bar plot
+ggplot(data = data.frame(Age = names(age_counts),
+                         Count = as.vector(age_counts))) +
+  geom_bar(aes(x = Age, y = Count), stat = "identity") +
+  xlab("Age") +
+  ylab("Count") +
+  ggtitle("Visualization for age")
+
+```
+
+```{r}
+
+data %>%
+  ggplot(aes(x = Age)) +
+  geom_histogram(fill = "Orange", color = "black") +
+  theme_minimal() +
+  labs(x = "Age ",
+       y = "Number of Women") + ggtitle("Histogram Visualization for Age")
+
+```
+
+No zero counts.Presence of Outliers in the 80 ish side.
+Distribution is heavily skewed to the right.
+
+
+
+
+--------------Age & Diagbetes
+
+```{r}
+
+p2 <- ggplot(data_diag_1, aes(x = Age)) +
+  geom_density(alpha = 0.8, fill = "Orange", color = "black") +
+  theme(legend.position = "bottom") +
+  labs(x = "Age", y = "Density", title = "Age & Diabetes")
+
+p1 <- ggplot(data_diag_1, aes(x = Diagnosis, y = Age)) +
+  geom_boxplot() +
+  theme(legend.position = "bottom") +
+  ggtitle("Age & diabetes")
+
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+
+
+```
+
+
+
+```{r}
+
+p2 <- ggplot(data_diag_0, aes(x = Age)) +
+  geom_density(alpha = 0.8, fill = "Orange", color = "black") +
+  theme(legend.position = "bottom") +
+  labs(x = "Age", y = "Density", title = "Age NO Diabetes")
+
+p1 <- ggplot(data_diag_0, aes(x = Diagnosis, y = Age)) +
+  geom_boxplot() +
+  theme(legend.position = "bottom") +
+  ggtitle("Age NO diabetes")
+
+gridExtra::grid.arrange(p1, p2, ncol = 2)
+
+```
+
+
+--------------Diagnosis-------------
+
+```{r}
+
+# Create a stacked bar plot
+ggplot(data, aes(x = factor(Diagnosis), fill = factor(Diagnosis))) +
+  geom_bar() +
+  xlab("Diagnosis") +
+  ylab("Count") +
+  ggtitle("Stacked Bar Plot of Diagnosis")
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#-------------- KNN -----------------------
+ Handling the consecutive zeros in the rows
+
+```{r}
+
+
+#  a vector of the variables
+
+variables <- c("Glucose", "BloodPressure", "SkinThickness", "Insulin", "BMI", "Pedigree")
+
+# Filter the rows based on the conditions
+filtered_data <- patientdata[rowSums(patientdata[variables] == 0) > 2, ]
+
+# View the resulting dataframe
+filtered_data
+
+```
+
+```{r}
+#following block of code deletes the rows which has more than 2 zeros in it.#
+patientdata <- patientdata[rowSums(patientdata[variables] == 0) <= 2, ]
+
+```
+
+```{r} 
+summary(patientdata)
+```
+
+```{r}
+#Counts of zeros in each column
+zero_counts <- colSums(patientdata == 0)
+print(zero_counts)
+
+```
+
+
+View(patientdata)
+
+
+```{r}
+#Counts of zeros in each column
+zero_counts <- colSums(patientdata == 0)
+print(zero_counts)
+
+```
+```{r}
+summary(patientdata)
+```
+```{r}
+#replacing the zeros with NA
+
+ 
+
+# Specify the columns to exclude (1, 8, 9)
+columns_to_exclude <- c(1, 8, 9)
+
+ 
+
+# Replace zeros with NA in the remaining columns
+patientdata[, -columns_to_exclude][patientdata[, -columns_to_exclude] == 0] <- NA
+
+``` 
+
+```{r}
+# View the updated dataset
+summary(patientdata)
+
+```
+
+```{r}
+install.packages("VIM")
+
+```
+ 
+```{r}
+#imputing the zeros with KNN
+# Specify the columns to impute (excluding columns pregnancy, Age, and Diagnosis)
+columns_to_impute <- setdiff(seq_along(patientdata), c(1, 8, 9))
+
+```
+ 
+```{r}
+# Perform kNN imputation on the selected columns
+patientdata[, columns_to_impute] <- kNN(patientdata[, columns_to_impute], k = 5)
+
+```
+```{r} 
+
+# View the updated dataset
+patientdata
+
+```
+```{r}
+
+summary(patientdata)
+
+```
+
+```{r}
+
+zero_counts <- colSums(patientdata == 0)
+print(zero_counts)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
