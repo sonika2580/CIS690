@@ -1,0 +1,357 @@
+
+# With KNN
+
+```{r}
+patientdataKNN <-read.csv("patients.csv")
+
+
+#back dataset
+head(patientdataKNN, 25)
+summary(patientdataKNN)
+
+####### Handling the consecutive zeros in the rows.
+variables <- c("Glucose", "BloodPressure", "SkinThickness", "Insulin", "BMI", "Pedigree")
+# Filter the rows based on the conditions
+filtered_data <- patientdataKNN[rowSums(patientdataKNN[variables] == 0) > 2, ]
+# View the resulting dataframe
+filtered_data
+#following block of code deletes the rows which has more than 2 zeros in it.#
+patientdataKNN <- patientdataKNN[rowSums(patientdataKNN[variables] == 0) <= 2, ]
+
+#Counts of zeros in each column
+zero_counts <- colSums(patientdataKNN == 0)
+print(zero_counts)
+
+#replacing the zeros with NA
+
+# Specify the columns to exclude (1, 8, 9)
+columns_to_exclude <- c(1, 8, 9)
+
+
+# Replace zeros with NA in the remaining columns
+patientdataKNN[, -columns_to_exclude][patientdataKNN[, -columns_to_exclude] == 0] <- NA
+
+
+# View the updated dataset
+head(patientdataKNN, 5)
+
+#imputing the zeros with KNN
+# Specify the columns to impute (excluding columns pregnancy, Age, and Diagnosis)
+columns_to_impute <- setdiff(seq_along(patientdataKNN), c(1, 8, 9))
+
+ 
+
+# Perform kNN imputation on the selected columns
+patientdataKNN[, columns_to_impute] <- kNN(patientdataKNN[, columns_to_impute], k = 5)
+
+ 
+
+# View the updated dataset
+head(patientdataKNN, 5)
+
+##Winsorization for KNN##
+
+ 
+
+independent_vars <- c("Glucose" , "BloodPressure", "SkinThickness", "Insulin", "BMI" , "Pedigree")
+#independent_vars <- c("Pregnancies")
+
+ 
+
+for (rows in independent_vars) {
+  q1 <- quantile(patientdataKNN[[rows]], 0.25, na.rm = TRUE)
+  q3 <- quantile(patientdataKNN[[rows]], 0.75, na.rm = TRUE)
+  iqr <- q3 - q1
+  lower_bound <- q1 - 1.5 * iqr
+  upper_bound <- q3 + 1.5 * iqr
+
+  # Perform winsorization on the specific variable
+  patientdataKNN[[rows]] <- ifelse(patientdataKNN[[rows]] < lower_bound, lower_bound,
+                                ifelse(patientdataKNN[[rows]] > upper_bound, upper_bound, patientdataKNN[[rows]]))
+}
+
+ 
+
+summary(patientdataKNN)
+
+```
+# Correlation Plot for KNN imputation model
+
+```{r}
+#CORRELATION TEST
+
+ 
+
+#Create a correlogram
+# Load the required libraries
+library(corrplot)
+library(ggplot2)
+
+ 
+
+# Load your dataset (assuming it's already imported or available)
+# Make sure the dataset contains your independent variables and dependent variable
+
+ 
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(patientdataKNN[, c("Pregnancies", "Glucose", "BloodPressure", "SkinThickness", "Insulin", "BMI", "Pedigree", "Age", "Diagnosis")])
+
+ 
+
+# Visualize the correlogram
+corrplot(correlation_matrix, method = "color", type = "upper", order = "hclust", tl.col = "black", tl.srt = 45, addCoef.col = "black")
+
+ 
+
+# Find the correlation coefficients of the dependent variable (Diagnosis)
+cor_with_diagnosis <- abs(correlation_matrix[,"Diagnosis"])
+
+ 
+
+# Set a threshold for selecting the best features (e.g., absolute correlation > 0.3 or 0.5)
+threshold <- 0.3
+
+ 
+
+# Select the independent variables with correlation above the threshold
+best_features <- names(cor_with_diagnosis[cor_with_diagnosis > threshold])
+
+ 
+
+# Print the best features
+print(best_features)
+
+```
+# Scaling the variables for KNN imputation
+
+```{r}
+
+#Extract the features
+Pregnancies <- patientdataKNN$Pregnancies
+Glucose <- patientdataKNN$Glucose
+BloodPressure <- patientdataKNN$BloodPressure
+SkinThickness <-patientdataKNN$SkinThickness
+Insulin <- patientdataKNN$Insulin
+BMI <-patientdataKNN$BMI
+Pedigree <- patientdataKNN$Pedigree
+Age <- patientdataKNN$Age
+
+
+#Gaussaian Distribution
+
+Pregnancies_knn <- scale(Pregnancies)
+Glucose_knn <- scale(Glucose)
+BloodPressure_knn <- scale(BloodPressure)
+SkinThickness_knn <- scale(SkinThickness)
+Insulin_knn <- scale(Insulin)
+BMI_knn<- scale(BMI)
+Pedigree_knn <- scale(Pedigree)
+Age_knn <- scale(Age)
+
+
+
+hist(Pregnancies_knn, main = "Standardized Pregnancies", xlab = "Pregnancies ", ylab = "Frequency")
+hist(Glucose_knn, main = "Standardized Glucose", xlab = "Glucose level ", ylab = "Frequency")
+hist(BloodPressure_knn, main = "Standardized BloodPressure", xlab = "BloodPRessure ", ylab = "Frequency")
+hist(SkinThickness_knn, main = "Standardized SkinThickness", xlab = "SkinThickness", ylab = "Frequency")
+hist(Insulin_knn, main = "Standardized Insulin", xlab = "BMI ", ylab = "Frequency")
+hist(BMI_knn, main = "Standardized BMI", xlab = "BMI ", ylab = "Frequency")
+hist(Pedigree_knn, main = "Standardized Pedigree", xlab = "Pedigree", ylab = "Frequency")
+hist(Age_knn, main = "Standardized Age", xlab = "Age ", ylab = "Frequency")
+
+```
+# Model1 : KNN Imputation
+
+```{r}
+#Create a data set with best features and diagnosis
+model_KNN1 <- data.frame(Glucose = Glucose_knn, BMI = BMI_knn, Insulin = Insulin_knn, Diagnosis = patientdataKNN$Diagnosis)
+model_data
+
+
+
+model_KNN2 <- data.frame(Pregnancies = Pregnancies_knn, Glucose   = Glucose_knn, BloodPressure=BloodPressure_knn, SkinThickness =SkinThickness_knn, Insulin =  Insulin_knn ,BMI = BMI_knn,Pedigree = Pedigree_knn, Age = Age_knn, Diagnosis = patientdataKNN$Diagnosis)
+names(patientdataKNN)
+
+
+
+```
+# Model1 : KNN Imputation with Best Features
+
+```{r}
+#Using a caret we will split out dataset into training and testing set
+#install.packages("caret")
+library(caret)
+
+#Split the dataset
+set.seed(123) #for reproducibility
+train_indicesKNN1 <-createDataPartition(model_KNN1$Diagnosis, p=0.8, list = FALSE)
+
+train_dataKNN1 <- model_KNN1[train_indicesKNN1,]
+test_dataKNN1 <- model_KNN1[-train_indicesKNN1,]
+
+#Train model1 with best features which in our case is Glucose and BMI
+
+modelKNN1 <- glm(Diagnosis ~ Glucose + BMI + Insulin, data = train_dataKNN1, family = binomial)
+modelKNN1
+
+#create steps
+step_modelKNNl <- step(modelKNN1)
+
+predictionKNN1 <- predict(modelKNN1, new_data = test_dataKNN1, type = "response")
+```
+
+```{r}
+# Assuming that the dependent variable is a factor, convert the predictions to binary class labels
+predictionKNN1 <- ifelse(predictionKNN1 >= 0.5, 1, 0)
+
+```
+
+
+```{r}
+
+par(mfrow = c(1,2))
+
+pred_inKNN1 <- predict(modelKNN1,newdatas = train_dataKNN1,type = "response")
+prediction_inKNN1 <- ifelse(pred_inKNN1<0.29,0,1)
+tab<-table(as.factor(train_dataKNN1$Diagnosis),prediction_inKNN1)
+roc.plot(train_dataKNN1$Diagnosis=="1", pred_inKNN1)$roc.vol
+
+```
+
+```{r}
+
+pred_outKNN1 <- predict(modelKNN1,newdata = test_dataKNN1,type = "response")
+prediction_outKNN1 <- ifelse(pred_outKNN1<0.29,0,1)
+table(as.factor(test_dataKNN1$Diagnosis),prediction_outKNN1)
+
+```
+
+```{r}
+roc.plot(test_dataKNN1$Diagnosis=="1", pred_outKNN1)$roc.vol
+
+```
+
+
+# Calculate model performance metrics
+
+
+```{r}
+# Convert predicted values to factors
+prediction_outKNN1 <- as.factor(ifelse(pred_outKNN1 < 0.29, 0, 1))
+
+# Convert reference labels to factors with the same levels
+reference <- as.factor(test_dataKNN1$Diagnosis)
+levels(reference) <- levels(prediction_outKNN1)
+
+# Calculate model performance metrics
+library(caret)
+
+# Accuracy
+accuracy <- confusionMatrix(data = prediction_outKNN1, reference = reference)$overall['Accuracy']
+
+# F1 score
+f1_score <- confusionMatrix(data = prediction_outKNN1, reference = reference)$byClass['F1']
+
+# Precision
+precision <- confusionMatrix(data = prediction_outKNN1, reference = reference)$byClass['Pos Pred Value']
+
+#Recall
+recall <- confusionMatrix(data= prediction_outKNN1, reference = reference)$byClass['Sensitivity']
+
+# Print the performance metrics
+cat("Accuracy :", accuracy, "\n")
+cat("F1 Score:", f1_score, "\n")
+cat("Precision:", precision, "\n")
+cat("Recall", recall,"\n")
+
+```
+# Model2 : KNN Impuraion All Variables
+
+```{r}
+#Using a caret we will split out dataset into training and testing set
+#install.packages("caret")
+library(caret)
+
+#Split the dataset
+set.seed(123) #for reproducibility
+train_indicesKNN2 <-createDataPartition(model_KNN2$Diagnosis, p=0.8, list = FALSE)
+
+train_dataKNN2 <- model_KNN2[train_indicesKNN2,]
+test_dataKNN2 <- model_KNN2[-train_indicesKNN2,]
+
+#Train model1 with best features which in our case is Glucose and BMI
+
+modelKNN2 <- glm(Diagnosis ~ . , data = train_dataKNN2, family = binomial)
+modelKNN2
+
+#create steps
+#step_modelKNNl <- step(modelKNN1)
+
+predictionKNN2 <- predict(modelKNN2, new_data = test_dataKNN2, type = "response")
+```
+
+```{r}
+# Assuming that the dependent variable is a factor, convert the predictions to binary class labels
+predictionKNN2 <- ifelse(predictionKNN2 >= 0.5, 1, 0)
+
+```
+
+
+```{r}
+
+par(mfrow = c(1,2))
+
+pred_inKNN2 <- predict(modelKNN2,newdatas = train_dataKNN2,type = "response")
+prediction_inKNN2 <- ifelse(pred_inKNN2<0.29,0,1)
+tab<-table(as.factor(train_dataKNN2$Diagnosis),prediction_inKNN2)
+roc.plot(train_dataKNN2$Diagnosis=="1", pred_inKNN2)$roc.vol
+
+```
+
+```{r}
+
+pred_outKNN2 <- predict(modelKNN2,newdata = test_dataKNN2,type = "response")
+prediction_outKNN2 <- ifelse(pred_outKNN2<0.29,0,1)
+table(as.factor(test_dataKNN2$Diagnosis),prediction_outKNN2)
+
+```
+
+```{r}
+roc.plot(test_dataKNN2$Diagnosis=="1", pred_outKNN2)$roc.vol
+
+```
+
+
+# Calculate model performance metrics
+
+
+```{r}
+# Convert predicted values to factors
+prediction_outKNN2 <- as.factor(ifelse(pred_outKNN2 < 0.29, 0, 1))
+
+# Convert reference labels to factors with the same levels
+reference <- as.factor(test_dataKNN2$Diagnosis)
+levels(reference) <- levels(prediction_outKNN2)
+
+# Calculate model performance metrics
+library(caret)
+
+# Accuracy
+accuracy <- confusionMatrix(data = prediction_outKNN2, reference = reference)$overall['Accuracy']
+
+# F1 score
+f1_score <- confusionMatrix(data = prediction_outKNN2, reference = reference)$byClass['F1']
+
+# Precision
+precision <- confusionMatrix(data = prediction_outKNN2, reference = reference)$byClass['Pos Pred Value']
+
+#Recall
+recall <- confusionMatrix(data= prediction_outKNN2, reference = reference)$byClass['Sensitivity']
+
+# Print the performance metrics
+cat("Accuracy :", accuracy, "\n")
+cat("F1 Score:", f1_score, "\n")
+cat("Precision:", precision, "\n")
+cat("Recall:", recall, "\n")
+```
