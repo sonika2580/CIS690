@@ -1,0 +1,669 @@
+---
+title: "Final_code"
+author: "Sonika Shrestha"
+date: "`r Sys.Date()`"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Data Exploration
+
+```{r}
+
+#install.packages("ROCR")
+#install.packages("rocc")
+#install.packages("ROCit")
+#install.packages("pROC")
+#install.packages("caTools")
+#install.packages("precrec")
+#install.packages("AUC")
+#install.packages("verification")
+
+library(ggplot2)
+library(corrplot)
+library(VIM)
+library(imputeTS)
+
+# Logistic Regression Performance
+library(ROCR)
+library(rocc)
+library(ROCit)
+library(pROC)
+library(caTools)
+library(precrec)
+library(AUC)
+library(verification)
+library(caret)
+
+```
+
+### Load the dataset in R Studio. Examine the first few rows of data using R. Explain your findings. Did you notice anything abnormal or interesting?
+
+```{r}
+data <-read.csv("patients.csv")
+
+```
+
+###Provide summary statistics. Calculate the mean, median, standard deviation, and quartiles for each independent variable. Explain your results.
+
+```{r}
+# Calculate summary statistics
+summary_stats <- function(x) {
+  mean_val <- mean(x)
+  median_val <- median(x)
+  sd_val <- sd(x)
+  quartiles <- quantile(x, probs = c(0.25, 0.5, 0.75))
+  
+  return(list(
+    mean = mean_val,
+    median = median_val,
+    sd = sd_val,
+    quartiles = quartiles
+  ))
+}
+
+# Apply the summary_stats function to each variable
+result <- lapply(data, summary_stats)
+
+# Create a data frame with the results
+result_df <- data.frame(
+  Variable = names(result),
+  Mean = sapply(result, function(x) x$mean),
+  Median = sapply(result, function(x) x$median),
+  SD = sapply(result, function(x) x$sd),
+  Q1 = sapply(result, function(x) x$quartiles[1]),
+  Q2 = sapply(result, function(x) x$quartiles[2]),
+  Q3 = sapply(result, function(x) x$quartiles[3])
+)
+
+# Load the required packages
+library(knitr)
+
+# Print the table
+kable(result_df)
+```
+
+### Using the ggplot2 library, create any five visualizations. Explain your reasoning for selecting those visualizations. Explain the output of each visualization. What are the insights your visualizations reveal about the dataset? 
+
+
+##Explain Findings:
+### Find missing values for each independent variable and fill them with median values. The missing values for independent variables in the dataset are coded 0.
+```{r}
+# Given that the missing values for variables are coded 0
+
+# Replace zeros with NA in the columns except the dependent column
+
+columns_to_exclude <- c(9)
+
+data[, -columns_to_exclude][data[, -columns_to_exclude] == 0] <- NA
+
+summary(data)
+
+independent_vars <- c("Pregnancies","Glucose" , "BloodPressure", "SkinThickness", "Insulin", "BMI" , "Pedigree", "Age")
+
+med_data <- data
+# Replacing NA values with median for each independent variable
+for (var in independent_vars){
+  # Calculate the median of the variable, ignoring NA values
+  med_value<- median(med_data[, var], na.rm=TRUE)
+  med_value
+#Replace NA values with the median in the new dataset
+  med_data[is.na(med_data[, var]), var] <- med_value
+}
+```
+
+```{r}
+summary(med_data)
+```
+
+### Find outliers for each independent variable using the IQR rule
+
+```{r}
+# Function to find outliers using the IQR rule
+find_outliers <- function(x) {
+  q <- quantile(x, probs = c(0.25, 0.75))
+  iqr <- q[2] - q[1]
+  lower_bound <- q[1] - 1.5 * iqr
+  upper_bound <- q[2] + 1.5 * iqr
+  outliers <- x[x < lower_bound | x > upper_bound]
+  return(outliers)
+}
+
+# Apply the find_outliers function to each variable in your original dataset
+outliers <- lapply(med_data, find_outliers)
+
+
+# Create a data frame with the outliers
+outliers_df <- data.frame(
+  Variable = names(outliers),
+  Outliers = sapply(outliers, function(x) paste(x, collapse = ", "))
+)
+
+# Load the required packages
+library(knitr)
+
+# Print the table
+kable(outliers_df)
+```
+
+```{r}
+#replace outliers
+
+independent_vars <- c("Pregnancies","Glucose" , "BloodPressure", "SkinThickness", "Insulin", "BMI" , "Pedigree", "Age")
+
+
+for (rows in independent_vars) {
+  q1 <- quantile(med_data[[rows]], 0.25, na.rm = TRUE)
+  q3 <- quantile(med_data[[rows]], 0.75, na.rm = TRUE)
+  iqr <- q3 - q1
+  lower_bound <- q1 - 1.5 * iqr
+  upper_bound <- q3 + 1.5 * iqr
+  
+  # Perform winsorization on the specific variable
+  med_data[[rows]] <- ifelse(med_data[[rows]] < lower_bound, lower_bound,
+                             ifelse(med_data[[rows]] > upper_bound, upper_bound, med_data[[rows]]))
+}
+
+summary(med_data)
+
+```
+
+```{r}
+
+# Function to find outliers using the IQR rule
+find_outliers <- function(x) {
+  q <- quantile(x, probs = c(0.25, 0.75))
+  iqr <- q[2] - q[1]
+  lower_bound <- q[1] - 1.5 * iqr
+  upper_bound <- q[2] + 1.5 * iqr
+  outliers <- x[x < lower_bound | x > upper_bound]
+  return(outliers)
+}
+
+# Apply the find_outliers function to each variable in your original dataset
+outliers <- lapply(med_data, find_outliers)
+
+
+# Create a data frame with the outliers
+outliers_df <- data.frame(
+  Variable = names(outliers),
+  Outliers = sapply(outliers, function(x) paste(x, collapse = ", "))
+)
+
+# Load the required packages
+library(knitr)
+
+# Print the table
+kable(outliers_df)
+
+```
+
+### After dealing with Outliers
+
+```{r}
+
+library(ggplot2)
+library(gridExtra)
+
+# Box plot for Glucose values when Diagnosis is 0
+
+p1 <- ggplot(med_data, aes(x = factor(Diagnosis), y = Glucose, fill = factor(Diagnosis))) +
+  geom_boxplot() +
+  labs(x = "Diagnosis", y = "Glucose") +
+  ggtitle("Glucose values vs Diagnosis") +theme(legend.position = "bottom", legend.box = "horizontal")+
+  scale_fill_manual(values = c("0" = "blue", "1" = "red"))
+
+# Density plot for Glucose values when Diagnosis is 0
+p3 <- ggplot(med_data, aes(x = Glucose, fill = factor(Diagnosis))) +
+  geom_density(alpha = 0.5) +
+  labs(x = "Glucose", y = "Density") +theme(legend.position = "bottom", legend.box = "horizontal")+
+  ggtitle("Density Plot: Glucose values vs Diagnosis")
+
+
+
+# Arrange the box plots and density plots in two separate frames
+grid.arrange(p1, p3, ncol = 2)  
+
+```
+
+```{r}
+
+
+p1 <- ggplot(med_data, aes(x = factor(Diagnosis), y = BloodPressure, fill = factor(Diagnosis))) +
+  geom_boxplot() +
+  labs(x = "BloodPressure", y = "BloodPressure") +
+  ggtitle("BloodPressure values vs Diagnosis") +theme(legend.position = "bottom", legend.box = "horizontal")+
+  scale_fill_manual(values = c("0" = "blue", "1" = "red"))
+
+# Density plot for BloodPressure values when Diagnosis is 0
+p3 <- ggplot(med_data, aes(x = BloodPressure, fill = factor(Diagnosis))) +
+  geom_density(alpha = 0.5) +
+  labs(x = "BloodPressure", y = "Density") +theme(legend.position = "bottom", legend.box = "horizontal")+
+  ggtitle("Density Plot: BloodPressure values vs Diagnosis")
+
+# Arrange the box plots and density plots in two separate frames
+grid.arrange(p1, p3, ncol = 2) 
+
+
+```
+
+
+
+```{r}
+
+p1 <- ggplot(med_data, aes(x = factor(Diagnosis), y = SkinThickness, fill = factor(Diagnosis))) +
+  geom_boxplot() +
+  labs(x = "SkinThickness", y = "SkinThickness") +
+  ggtitle("SkinThickness values vs Diagnosis") +theme(legend.position = "bottom", legend.box = "horizontal")+
+  scale_fill_manual(values = c("0" = "blue", "1" = "red"))
+
+# Density plot for SkinThickness values when Diagnosis is 0
+p3 <- ggplot(med_data, aes(x = SkinThickness, fill = factor(Diagnosis))) +
+  geom_density(alpha = 0.5) +
+  labs(x = "SkinThickness", y = "Density") +theme(legend.position = "bottom", legend.box = "horizontal")+
+  ggtitle("Density Plot: SkinThickness values vs Diagnosis")
+
+# Arrange the box plots and density plots in two separate frames
+grid.arrange(p1, p3, ncol = 2) 
+
+```
+
+
+
+```{r}
+
+
+p1 <- ggplot(med_data, aes(x = factor(Diagnosis), y = Insulin, fill = factor(Diagnosis))) +
+  geom_boxplot() +
+  labs(x = "Insulin", y = "Insulin") +
+  ggtitle("Insulin values vs Diagnosis") +theme(legend.position = "bottom", legend.box = "horizontal")+
+  scale_fill_manual(values = c("0" = "blue", "1" = "red"))
+
+# Density plot for Insulin values when Diagnosis is 0
+p3 <- ggplot(med_data, aes(x = Insulin, fill = factor(Diagnosis))) +
+  geom_density(alpha = 0.5) +
+  labs(x = "Insulin", y = "Density") +theme(legend.position = "bottom", legend.box = "horizontal")+
+  ggtitle("Density Plot: Insulin values vs Diagnosis")
+
+# Arrange the box plots and density plots in two separate frames
+grid.arrange(p1, p3, ncol = 2) 
+
+```
+
+```{r}
+
+
+p1 <- ggplot(med_data, aes(x = factor(Diagnosis), y = BMI, fill = factor(Diagnosis))) +
+  geom_boxplot() +
+  labs(x = "BMI", y = "BMI") +
+  ggtitle("BMI values vs Diagnosis") +theme(legend.position = "bottom", legend.box = "horizontal")+
+  scale_fill_manual(values = c("0" = "blue", "1" = "red"))
+
+# Density plot for BMI values when Diagnosis is 0
+p3 <- ggplot(med_data, aes(x = BMI, fill = factor(Diagnosis))) +
+  geom_density(alpha = 0.5) +
+  labs(x = "BMI", y = "Density") +theme(legend.position = "bottom", legend.box = "horizontal")+
+  ggtitle("Density Plot: BMI values vs Diagnosis")
+
+# Arrange the box plots and density plots in two separate frames
+grid.arrange(p1, p3, ncol = 2) 
+
+```
+
+```{r}
+
+
+p1 <- ggplot(med_data, aes(x = factor(Diagnosis), y = Pedigree, fill = factor(Diagnosis))) +
+  geom_boxplot() +
+  labs(x = "Pedigree", y = "Pedigree") +
+  ggtitle("Pedigree values vs Diagnosis") +theme(legend.position = "bottom", legend.box = "horizontal")+
+  scale_fill_manual(values = c("0" = "blue", "1" = "red"))
+
+# Density plot for Pedigree values when Diagnosis is 0
+p3 <- ggplot(med_data, aes(x = Pedigree, fill = factor(Diagnosis))) +
+  geom_density(alpha = 0.5) +
+  labs(x = "Pedigree", y = "Density") +theme(legend.position = "bottom", legend.box = "horizontal")+
+  ggtitle("Density Plot: Pedigree values vs Diagnosis")
+
+# Arrange the box plots and density plots in two separate frames
+grid.arrange(p1, p3, ncol = 2) 
+
+
+```
+
+```{r}
+
+p1 <- ggplot(med_data, aes(x = factor(Diagnosis), y = Age, fill = factor(Diagnosis))) +
+  geom_boxplot() +
+  labs(x = "Age", y = "Age") +
+  ggtitle("Age values vs Diagnosis") +theme(legend.position = "bottom", legend.box = "horizontal")+
+  scale_fill_manual(values = c("0" = "blue", "1" = "red"))
+
+# Density plot for Age values when Diagnosis is 0
+p3 <- ggplot(med_data, aes(x = Age, fill = factor(Diagnosis))) +
+  geom_density(alpha = 0.5) +
+  labs(x = "Age", y = "Density") +theme(legend.position = "bottom", legend.box = "horizontal")+
+  ggtitle("Density Plot: Age values vs Diagnosis")
+
+# Arrange the box plots and density plots in two separate frames
+grid.arrange(p1, p3, ncol = 2) 
+
+
+```
+
+```{r}
+
+
+p1 <- ggplot(med_data, aes(x = factor(Diagnosis), y = Pregnancies, fill = factor(Diagnosis))) +
+  geom_boxplot() +
+  labs(x = "Pregnancies", y = "Pregnancies") +
+  ggtitle("Pregnancies values vs Diagnosis") +theme(legend.position = "bottom", legend.box = "horizontal")+
+  scale_fill_manual(values = c("0" = "blue", "1" = "red"))
+
+# Density plot for Pregnancies values when Diagnosis is 0
+p3 <- ggplot(med_data, aes(x = Pregnancies, fill = factor(Diagnosis))) +
+  geom_density(alpha = 0.5) +
+  labs(x = "Pregnancies", y = "Density") +theme(legend.position = "bottom", legend.box = "horizontal")+
+  ggtitle("Density Plot: Pregnancies values vs Diagnosis")
+
+# Arrange the box plots and density plots in two separate frames
+grid.arrange(p1, p3, ncol = 2) 
+
+```
+
+```{r}
+# Create a histogram
+hist(med_data$Pregnancies, main = "Distribution of Pregnancies", xlab = "No. of pregnancies", ylab = "Frequency")
+
+hist(med_data$Glucose, main = "Distribution of Glucose", xlab = "Glucose amount", ylab = "Frequency")
+
+hist(med_data$BloodPressure, main = "Distribution of BP", xlab = "Blood Pressure", ylab = "Frequency")
+
+hist(med_data$SkinThickness, main = "Distribution of Skin Thickness", xlab = "Skin Thickness", ylab = "Frequency")
+
+hist(med_data$Insulin, main = "Distribution of Insulin Level", xlab = "Insulin Level", ylab = "Frequency")
+
+hist(med_data$BMI, main = "Distribution of BMI", xlab = "BMI ", ylab = "Frequency")
+
+hist(med_data$Pedigree, main = "Distribution of Pedigree", xlab = "Pedigree", ylab = "Frequency")
+
+hist(med_data$Age, main = "Distribution of Age", xlab = "Age", ylab = "Frequency")
+
+hist(med_data$Diagnosis, main = "Distribution of Diagnosis", xlab = "Daignosis Class", ylab = "Frequency")
+```
+
+### Find the best performing variables/features using a correlogram
+
+
+```{r}
+#Create a correlogram
+# Load the required libraries
+
+
+correlation_matrix <- cor(med_data[, c("Pregnancies", "Glucose", "BloodPressure", "SkinThickness", "Insulin", "BMI", "Pedigree", "Age", "Diagnosis")])
+
+corrplot(correlation_matrix, method = "color", addCoef.col = "black")
+
+
+
+# Find the correlation coefficients of the dependent variable (Diagnosis)
+cor_with_diagnosis <- abs(correlation_matrix[,"Diagnosis"])
+
+# Set a threshold for selecting the best features (e.g., absolute correlation > 0.3 or 0.5)
+threshold <- 0.3
+
+# Select the independent variables with correlation above the threshold
+best_features <- names(cor_with_diagnosis[cor_with_diagnosis > threshold])
+
+# Print the best features
+print(best_features)
+
+```
+
+# Standardize your features to Gaussian distribution. Explain why it would be a good idea to standardize the features to Gaussian distribution
+
+```{r}
+#Extract the features
+Pregnancies <- med_data$Pregnancies
+Glucose <- med_data$Glucose
+BloodPressure <- med_data$BloodPressure
+SkinThickness <- med_data$SkinThickness
+Insulin <- med_data$Insulin
+BMI <-med_data$BMI
+Pedigree <- med_data$Pedigree
+Age <- med_data$Age
+
+
+#Gaussaian Distribution
+
+Pregnancies_n <- scale(Pregnancies)
+Glucose_n <- scale(Glucose)
+BloodPressure_n <- scale(BloodPressure)
+SkinThickness_n <- scale(SkinThickness)
+Insulin_n <- scale(Insulin)
+BMI_n<- scale(BMI)
+Pedigree_n <- scale(Pedigree)
+Age_n <- scale(Age)
+
+
+
+hist(Pregnancies_n, main = "Standardized Pregnancies", xlab = "Pregnancies ", ylab = "Frequency")
+hist(Glucose_n, main = "Standardized Glucose", xlab = "Glucose level ", ylab = "Frequency")
+hist(BloodPressure_n, main = "Standardized BloodPressure", xlab = "BloodPRessure ", ylab = "Frequency")
+hist(SkinThickness_n, main = "Standardized SkinThickness", xlab = "SkinThickness", ylab = "Frequency")
+hist(Insulin_n, main = "Standardized Insulin", xlab = "BMI ", ylab = "Frequency")
+hist(BMI_n, main = "Standardized BMI", xlab = "BMI ", ylab = "Frequency")
+hist(Pedigree_n, main = "Standardized Pedigree", xlab = "Pedigree", ylab = "Frequency")
+hist(Age_n, main = "Standardized Age", xlab = "Age ", ylab = "Frequency")
+```
+
+# With MEDIAN
+
+###Model1: BEST FEATURES with median Imputation
+
+```{r}
+#Create a data set with the standardized values
+model_data <- data.frame(Pregnancies = Pregnancies_n, Glucose = Glucose_n, BloodPressure= BloodPressure_n, SkinThickness= SkinThickness_n , Insulin = Insulin_n, BMI = BMI_n, Pedigree = Pedigree_n,Age = Age_n, BMI = BMI_n, Diagnosis = med_data$Diagnosis)
+#model_data
+
+
+#Using a caret we will split out dataset into training and testing set
+#install.packages("caret")
+library(caret)
+
+#Split the dataset
+set.seed(123) #for reproducibility
+train_indices1 <-createDataPartition(model_data$Diagnosis, p=0.8, list = FALSE)
+
+train_data1 <- model_data[train_indices1,]
+test_data1 <- model_data[-train_indices1,]
+```
+
+```{r}
+# Check the linearity of the independent variables with dependent variables
+
+plot(train_data1$Glucose, train_data1$Diagnosis, xlab = "Glucose", ylab = "Diagnosis", pch = 16, col = ifelse(train_data1$Diagnosis == 1, "red", "blue"))
+
+plot(train_data1$BMI, train_data1$Diagnosis, xlab = "BMI", ylab = "Diagnosis", pch = 16, col = ifelse(train_data1$Diagnosis == 1, "red", "blue"))
+
+```
+
+```{r}
+#Train model1 with best features which in our case is Glucose and BMI
+
+model1 <- glm(Diagnosis ~ Glucose + BMI, data = train_data1, family = binomial)
+model1
+
+#create steps
+step_model <- step(model1)
+
+prediction1 <- predict(model1, new_data = test_data1, type = "response")
+```
+
+```{r}
+# Assuming that the dependent variable is a factor, convert the predictions to binary class labels
+prediction1 <- ifelse(prediction1 >= 0.5, 1, 0)
+
+```
+
+
+```{r}
+
+par(mfrow = c(1,2))
+
+pred_in1 <- predict(model1,newdatas = train_data1,type = "response")
+prediction_in1 <- ifelse(pred_in1<0.29,0,1)
+tab<-table(as.factor(train_data1$Diagnosis),prediction_in1)
+roc.plot(train_data1$Diagnosis=="1", pred_in1)$roc.vol
+
+```
+
+```{r}
+
+pred_out1 <- predict(model1,newdata = test_data1,type = "response")
+prediction_out1 <- ifelse(pred_out1<0.29,0,1)
+table(as.factor(test_data1$Diagnosis),prediction_out1)
+
+```
+
+```{r}
+roc.plot(test_data1$Diagnosis=="1", pred_out1)$roc.vol
+```
+
+
+# Calculate model performance metrics
+
+
+```{r}
+# Convert predicted values to factors
+prediction_out1 <- as.factor(ifelse(pred_out1 < 0.29, 0, 1))
+
+# Convert reference labels to factors with the same levels
+reference <- as.factor(test_data1$Diagnosis)
+levels(reference) <- levels(prediction_out1)
+
+# Calculate model performance metrics
+library(caret)
+
+# Accuracy
+accuracy <- confusionMatrix(data = prediction_out1, reference = reference)$overall['Accuracy']
+
+# F1 score
+f1_score <- confusionMatrix(data = prediction_out1, reference = reference)$byClass['F1']
+
+# Precision
+precision <- confusionMatrix(data = prediction_out1, reference = reference)$byClass['Pos Pred Value']
+
+#Recall
+recall <- confusionMatrix(data= prediction_out1, reference = reference)$byClass['Sensitivity']
+
+# Print the performance metrics
+cat("Accuracy :", accuracy, "\n")
+cat("F1 Score:", f1_score, "\n")
+cat("Precision:", precision, "\n")
+cat("Recall:", recall,"\n")
+
+```
+
+
+###Model2: ALL VARIABLES
+
+```{r}
+#Create a data set with best features and diagnosis
+model_data2 <- data.frame(Pregnancies = Pregnancies_n, Glucose = Glucose_n, BloodPressure = BloodPressure_n, Insulin=Insulin_n, SkinThickness = SkinThickness_n, Pedigree = Pedigree_n, BMI = BMI_n, Age = Age_n , Diagnosis = med_data$Diagnosis)
+model_data2
+
+#Using a caret we will split out dataset into training and testing set
+#install.packages("caret")
+library(caret)
+
+#Split the dataset
+set.seed(123) #for reproducibility
+train_indices2 <-createDataPartition(model_data2$Diagnosis, p=0.8, list = FALSE)
+
+train_data2<- model_data2[train_indices2,]
+test_data2 <- model_data2[-train_indices2,]
+```
+```{r}
+#Train model
+
+model2 <- glm(Diagnosis ~ Pregnancies + Glucose + SkinThickness + BloodPressure + Insulin + Pedigree + BMI + Age, data = train_data2, family = binomial)
+model2
+
+#step_model <- step(model.glm)
+
+prediction2 <- predict(model2, new_data = test_data2, type = "response")
+```
+```{r}
+# Assuming that the dependent variable is a factor, convert the predictions to binary class labels
+prediction2 <- ifelse(prediction2 >= 0.5, 1, 0)
+
+
+
+```
+
+# Model2 with Median Evaluation
+
+
+```{r}
+
+par(mfrow = c(1,2))
+
+pred_in2 <- predict(model2,newdatas = train_data2,type = "response")
+prediction_in2 <- ifelse(pred_in2<0.29,0,1)
+tab<-table(as.factor(train_data2$Diagnosis),prediction_in2)
+roc.plot(train_data2$Diagnosis=="1", pred_in2)$roc.vol
+
+```
+
+```{r}
+
+pred_out2 <- predict(model2,newdata = test_data2,type = "response")
+prediction_out2 <- ifelse(pred_out2<0.29,0,1)
+table(as.factor(test_data2$Diagnosis),prediction_out2)
+
+```
+
+```{r}
+roc.plot(test_data2$Diagnosis=="1", pred_out2)$roc.vol
+
+```
+
+
+# Calculate model performance metrics
+
+```{r}
+# Convert predicted values to factors
+prediction_out2<- as.factor(ifelse(pred_out2 < 0.29, 0, 1))
+
+# Convert reference labels to factors with the same levels
+reference <- as.factor(test_data2$Diagnosis)
+levels(reference) <- levels(prediction_out2)
+
+# Calculate model performance metrics
+library(caret)
+
+# Accuracy
+accuracy <- confusionMatrix(data = prediction_out2, reference = reference)$overall['Accuracy']
+
+# F1 score
+f1_score <- confusionMatrix(data = prediction_out2, reference = reference)$byClass['F1']
+
+# Precision
+precision <- confusionMatrix(data = prediction_out2, reference = reference)$byClass['Pos Pred Value']
+
+#Recall
+recall <- confusionMatrix(data= prediction_out2, reference = reference)$byClass['Sensitivity']
+
+# Print the performance metrics
+cat("Accuracy :", accuracy, "\n")
+cat("F1 Score:", f1_score, "\n")
+cat("Precision:", precision, "\n")
+cat("Recall:", recall, "\n")
+
+```
