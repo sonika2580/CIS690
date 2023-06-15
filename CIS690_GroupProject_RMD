@@ -1,0 +1,89 @@
+
+---
+title: "Final_code"
+author: "Sonika Shrestha: Group Project"
+date: "`r Sys.Date()`"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Data Exploration
+
+```{r}
+# required Library for the project 
+
+#install.packages("ROCR")
+#install.packages("rocc")
+#install.packages("ROCit")
+#install.packages("pROC")
+#install.packages("caTools")
+#install.packages("precrec")
+#install.packages("AUC")
+#install.packages("verification")
+
+library(ggplot2)
+library(corrplot)
+library(VIM)
+library(imputeTS)
+
+# Logistic Regression Performance
+library(ROCR)
+library(rocc)
+library(ROCit)
+library(pROC)
+library(caTools)
+library(precrec)
+library(AUC)
+library(verification)
+library(caret)
+
+```
+
+### Load the dataset in R Studio. Examine the first few rows of data using R. Explain your findings. Did you notice anything abnormal or interesting?
+
+```{r}
+setwd("C:/Users/rohan/Desktop/CIS-690")
+data <-read.csv("patients.csv")
+```
+
+###Provide summary statistics. Calculate the mean, median, standard deviation, and quartiles for each independent variable. Explain your results.
+```{r}
+# Calculate summary statistics
+summary_stats <- function(x) {
+  mean_val <- mean(x)
+  median_val <- median(x)
+  sd_val <- sd(x)
+  quartiles <- quantile(x, probs = c(0.25, 0.5, 0.75))
+  
+  return(list(
+    mean = mean_val,
+    median = median_val,
+    sd = sd_val,
+    quartiles = quartiles
+  ))
+}
+
+# Apply the summary_stats function to each variable
+result <- lapply(data, summary_stats)
+
+# Create a data frame with the results
+result_df <- data.frame(
+  Variable = names(result),
+  Mean = sapply(result, function(x) x$mean),
+  Median = sapply(result, function(x) x$median),
+  SD = sapply(result, function(x) x$sd),
+  Q1 = sapply(result, function(x) x$quartiles[1]),
+  Q2 = sapply(result, function(x) x$quartiles[2]),
+  Q3 = sapply(result, function(x) x$quartiles[3])
+)
+
+# Load the required packages
+library(knitr)
+
+# Print the table
+kable(result_df)
