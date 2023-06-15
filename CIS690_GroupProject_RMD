@@ -87,3 +87,106 @@ library(knitr)
 
 # Print the table
 kable(result_df)
+
+```
+# New data frame with diagnosis 0 & 1
+
+```{r}
+# Creating a dataframe with diagnosis = 0
+data_diag_0 <- data[data$Diagnosis == 0, ]
+
+# Creating a dataframe with diagnosis = 1
+data_diag_1 <- data[data$Diagnosis == 1, ]
+
+```
+### Using the ggplot2 library, create any five visualizations. Explain your reasoning for selecting those visualizations. Explain the output of each visualization. What are the insights your visualizations reveal about the dataset? 
+
+
+```{r}
+#Histogram of entire glucose
+data %>%
+  ggplot(aes(x = Glucose)) +
+  geom_histogram(fill = "Orange", color = "black") +
+  theme_minimal() +
+  labs(x = "Glucose Level ",
+       y = "Number of Women")+ggtitle("Variation of glucose in women")
+
+
+ggplot(data_diag_0, aes(x = Glucose)) +
+  geom_density(alpha = 0.8, fill = "Orange", color = "black") +
+  theme(legend.position = "bottom") +
+  labs(x = "Glucose", y = "Density", title = "Density plot of glucose")
+
+ggplot(data_diag_0, aes(x = Diagnosis, y = Glucose)) +
+  geom_boxplot() +
+  theme(legend.position = "bottom") +
+  ggtitle("Variation of glucose NO Diabetes")
+
+
+#Skin thickness
+data %>%
+  ggplot(aes(x = SkinThickness)) +
+  geom_histogram(fill = "Orange", color = "black") +
+  theme_minimal() +
+  labs(x = "SkinThickness ",
+       y = "Number of Women")+ggtitle("Variation in Skinthickness in women")
+
+ggplot(data_diag_0, aes(x = SkinThickness)) +
+  geom_density(alpha = 0.8, fill = "Orange", color = "black") +
+  theme(legend.position = "bottom") +
+  labs(x = "SkinThickness", y = "Density", title = "SkinThickness  NO Diabetes")
+
+ggplot(data_diag_0, aes(x = Diagnosis, y = SkinThickness)) +
+  geom_boxplot() +
+  theme(legend.position = "bottom") +
+  ggtitle("Skinthickness No Diabetes")
+
+#Diabetes
+
+ggplot(data_diag_1, aes(x = SkinThickness)) +
+  geom_density(alpha = 0.8, fill = "Orange", color = "black") +
+  theme(legend.position = "bottom") +
+  labs(x = "SkinThickness", y = "Density", title = "Diabetes vs SkinThickness")
+
+ggplot(data_diag_1, aes(x = Diagnosis, y = SkinThickness)) +
+  geom_boxplot() +
+  theme(legend.position = "bottom") +
+  ggtitle("Diabetes vs SkinThickness")
+
+#BMI
+data %>%
+  ggplot(aes(x = BMI)) +
+  geom_histogram(fill = "Orange", color = "black") +
+  theme_minimal() +
+  labs(x = "BMI ",
+       y = "Number of Women")+ggtitle("Variation of BMI in data")
+
+ggplot(data_diag_1, aes(x = BMI)) +
+  geom_density(alpha = 0.8, fill = "Orange", color = "black") +
+  theme(legend.position = "bottom") +
+  labs(x = "BMI", y = "Density", title = "BMI vs Diabetes")
+
+ggplot(data_diag_1, aes(x = Diagnosis, y = BMI)) +
+  geom_boxplot() +
+  theme(legend.position = "bottom") +
+  ggtitle("BMI Diabetes")
+
+#BMI VS No Diebetes
+ggplot(data_diag_0, aes(x = BMI)) +
+  geom_density(alpha = 0.8, fill = "Orange", color = "black") +
+  theme(legend.position = "bottom") +
+  labs(x = "BMI", y = "Density", title = "Density plot BMI without Diabetes")
+
+ggplot(data_diag_0, aes(x = Diagnosis, y = BMI)) +
+  geom_boxplot() +
+  theme(legend.position = "bottom") +
+  ggtitle("BMI without Diabetes")
+
+data %>%
+  ggplot(aes(x = Insulin)) +
+  geom_histogram(fill = "Orange", color = "black") +
+  theme_minimal() +
+  labs(x = "Insulin ",
+       y = "Number of Women") + ggtitle("Insulin in entire dataset")
+```
+
